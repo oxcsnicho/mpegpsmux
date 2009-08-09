@@ -8,6 +8,8 @@
 #include <string.h>
 
 #include "mpegpsmux.h"
+#include "mpegpsmux_aac.h"
+#include "mpegpsmux_h264.h"
 
 GST_DEBUG_CATEGORY (mpegpsmux_debug);
 #define GST_CAT_DEFAULT mpegpsmux_debug
@@ -210,7 +212,7 @@ mpegpsmux_create_stream (MpegPsMux * mux, MpegPsPadData * ps_data, GstPad * pad)
       ps_data->codec_data = gst_buffer_ref (gst_value_get_buffer (value));
       GST_DEBUG_OBJECT (pad, "we have additional codec data (%d bytes)",
           GST_BUFFER_SIZE (ps_data->codec_data));
-      ps_data->prepare_func = NULL /* mpegpsmux_prepare_h264 */ ;
+      ps_data->prepare_func = mpegpsmux_prepare_h264;
     } else {
       ps_data->codec_data = NULL;
     }
@@ -245,7 +247,7 @@ mpegpsmux_create_stream (MpegPsMux * mux, MpegPsPadData * ps_data, GstPad * pad)
           ps_data->codec_data = gst_buffer_ref (gst_value_get_buffer (value));
           GST_DEBUG_OBJECT (pad, "we have additional codec data (%d bytes)",
               GST_BUFFER_SIZE (ps_data->codec_data));
-          ps_data->prepare_func = NULL /* mpegpsmux_prepare_aac */ ;
+          ps_data->prepare_func = mpegpsmux_prepare_aac;
         } else {
           ps_data->codec_data = NULL;
         }
