@@ -33,8 +33,8 @@ typedef struct bits_buffer_s
     gint     i_size;
 
     gint     i_data;
-    guint8 i_mask;
-    guint8 *p_data;
+    guint8   i_mask;
+    guint8*  p_data;
 
 } bits_buffer_t;
 

@@ -435,12 +435,23 @@ psmux_write_program_stream_map (PsMux * mux)
   gint psm_size = 16, es_map_size = 0;
   bits_buffer_t bw;
   GList *cur;
+  guint16 len;
+  guint8 *pos;
 
-  /* calculate es_map_size */
+  /* pre-write the descriptor loop */
+  pos = mux->es_info_buf;
   for (cur = g_list_first (mux->streams); cur != NULL; cur = g_list_next (cur)) {
-//      PsMuxStream *stream = (PsMuxStream *) cur->data;
+    PsMuxStream *stream = (PsMuxStream *) cur->data;
+    len = 0;
 
-    es_map_size += 4;
+    *pos++ = stream->stream_type;
+    *pos++ = stream->stream_id;
+
+    psmux_stream_get_es_descrs (stream, pos + 2, &len);
+    psmux_put16 (&pos, len);
+
+    es_map_size += len + 4;
+    pos += len;
 #if 0
     if (stream->lang[0] != 0)
       es_map_size += 6;
@@ -465,37 +476,13 @@ psmux_write_program_stream_map (PsMux * mux)
   /* program_stream_info empty */
 
   bits_write (&bw, 16, es_map_size);    /* elementary_stream_map_length */
-  for (cur = g_list_first (mux->streams); cur != NULL; cur = g_list_next (cur)) {
-    PsMuxStream *stream = (PsMuxStream *) cur->data;
-
-    bits_write (&bw, 8, stream->stream_type);   /* stream_type */
-    bits_write (&bw, 8, stream->stream_id);     /* elementary_stream_id */
-
-    /* Not supporting useful stream info tag at the time */
-#if 0
-    /* ISO639 language descriptor */
-    if (p_stream->lang[0] != 0) {
-      bits_write (&bw, 16, 6);  /* elementary_stream_info_length */
-
-      bits_write (&bw, 8, 0x0a);        /* descriptor_tag */
-      bits_write (&bw, 8, 4);   /* descriptor_length */
-
-      bits_write (&bw, 8, p_stream->lang[0]);
-      bits_write (&bw, 8, p_stream->lang[1]);
-      bits_write (&bw, 8, p_stream->lang[2]);
-      bits_write (&bw, 8, 0);   /* audio type: 0x00 undefined */
-    } else
-#endif
-    {
-      bits_write (&bw, 16, 0);  /* elementary_stream_info_length */
-      /* empty */
-    }
-  }
+  memcpy (bw.p_data + bw.i_data, mux->es_info_buf, es_map_size);
 
   /* CRC32 */
   {
     guint32 crc = calc_crc32 (mux->packet_buf, psm_size - 4);
-    bits_write (&bw, 32, crc);
+    guint8 * pos = mux->packet_buf + psm_size -4;
+    psmux_put32 (&pos, crc);
   }
 
   mux->packet_bytes_written = psm_size;

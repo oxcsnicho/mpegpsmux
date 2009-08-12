@@ -74,11 +74,13 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
       break;
       /* AC3 / A52 */
     case PSMUX_ST_PS_AUDIO_AC3:
-      if (info->id_a52 > PSMUX_STREAM_ID_A52_MAX)
+      if (info->id_ac3 > PSMUX_STREAM_ID_AC3_MAX)
         break;
-      stream->stream_id = PSMUX_EXTENDED_STREAM;
-      stream->stream_id_ext = info->id_a52++;
+      stream->stream_id = PSMUX_PRIVATE_STREAM_1;
+      stream->stream_id_ext = info->id_ac3++;
       stream->is_audio_stream = TRUE;
+      /* AC3 requires data alignment */
+      stream->pi.flags |= PSMUX_PACKET_FLAG_PES_DATA_ALIGN;
       break;
       /* TODO: SPU missing */
 #if 0
@@ -423,8 +425,11 @@ psmux_stream_write_pes_header (PsMuxStream * stream, guint8 * data)
   if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_FULL_HEADER) {
     guint8 flags = 0;
 
-    /* Not scrambled, original, not-copyrighted, data_alignment not specified */
-    *data++ = 0x81;
+    /* Not scrambled, original, not-copyrighted, data_alignment specified by flag */
+    if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_DATA_ALIGN)
+	*data++ = 0x85;
+    else
+	*data++ = 0x81;
 
     /* Flags */
     if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_WRITE_PTS_DTS)

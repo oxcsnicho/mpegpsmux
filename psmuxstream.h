@@ -130,8 +130,8 @@ guint64 	psmux_stream_get_pts 		(PsMuxStream *stream);
 #define PSMUX_STREAM_ID_MPGV_INIT       0xe0
 #define PSMUX_STREAM_ID_MPGV_MAX        0xef
 
-#define PSMUX_STREAM_ID_A52_INIT        0x80
-#define PSMUX_STREAM_ID_A52_MAX         0x87
+#define PSMUX_STREAM_ID_AC3_INIT        0x80
+#define PSMUX_STREAM_ID_AC3_MAX         0x87
 
 #define PSMUX_STREAM_ID_SPU_INIT        0x20
 #define PSMUX_STREAM_ID_SPU_MAX        	0x3f
@@ -145,7 +145,7 @@ guint64 	psmux_stream_get_pts 		(PsMuxStream *stream);
 struct PsMuxStreamIdInfo {
     guint8 id_mpga;
     guint8 id_mpgv;
-    guint8 id_a52;
+    guint8 id_ac3;
     guint8 id_spu;
     guint8 id_dts;
     guint8 id_lpcm;
@@ -157,7 +157,7 @@ psmux_stream_id_info_init (PsMuxStreamIdInfo * info)
     g_return_if_fail (info != NULL); /* TODO: error*/
     info->id_mpga = PSMUX_STREAM_ID_MPGA_INIT;
     info->id_mpgv = PSMUX_STREAM_ID_MPGV_INIT;
-    info->id_a52  = PSMUX_STREAM_ID_A52_INIT;
+    info->id_ac3  = PSMUX_STREAM_ID_AC3_INIT;
     info->id_spu  = PSMUX_STREAM_ID_SPU_INIT;
     info->id_dts  = PSMUX_STREAM_ID_DTS_INIT;
     info->id_lpcm = PSMUX_STREAM_ID_LPCM_INIT;

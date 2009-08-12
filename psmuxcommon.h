@@ -68,6 +68,7 @@ G_BEGIN_DECLS
 #define PSMUX_PACKET_FLAG_PES_WRITE_PTS_DTS (1 << 10)
 #define PSMUX_PACKET_FLAG_PES_WRITE_ESCR    (1 << 11)
 #define PSMUX_PACKET_FLAG_PES_EXT_STREAMID  (1 << 12)
+#define PSMUX_PACKET_FLAG_PES_DATA_ALIGN    (1 << 13)
 
 typedef struct PsMuxPacketInfo PsMuxPacketInfo;
 typedef struct PsMuxProgram PsMuxProgram;

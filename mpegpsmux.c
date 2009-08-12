@@ -479,6 +479,9 @@ mpegpsmux_collected (GstCollectPads * pads, MpegPsMux * mux)
   } else {
     /* FIXME: Drain all remaining streams */
     /* At EOS */
+    if (psmux_write_end_code (mux->psmux)) {
+      GST_WARNING_OBJECT (mux, "Writing MPEG PS Program end code failed.");
+    }
     gst_pad_push_event (mux->srcpad, gst_event_new_eos ());
   }
 
@@ -626,9 +629,6 @@ mpegpsmux_change_state (GstElement * element, GstStateChange transition)
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
       gst_collect_pads_stop (mux->collect);
-      if (psmux_write_end_code (mux->psmux)) {
-        GST_WARNING_OBJECT (mux, "Writing MPEG PS Program end code failed.");
-      }
       break;
     case GST_STATE_CHANGE_READY_TO_NULL:
       break;
