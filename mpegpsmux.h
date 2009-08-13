@@ -45,8 +45,8 @@ struct MpegPsMuxClass  {
 struct MpegPsPadData {
   GstCollectData collect; /* Parent */
 
-  guint8 pid; // XXX: change to stream_id
-  guint8 ext_pid; 
+  guint8 stream_id;
+  guint8 stream_id_ext; 
   PsMuxStream *stream;
 
   GstBuffer *queued_buf; /* Currently pulled buffer */

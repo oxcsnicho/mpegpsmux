@@ -80,8 +80,7 @@ struct PsMuxStream{
   /* PTS/DTS to write if the flags in the packet info are set */
   gint64 pts; /* TODO: cur_buffer->pts?*/
   gint64 dts; /* TODO: cur_buffer->dts?*/
-  gint64 last_pts; /* XXX: what for?*/
-  gint64 last_dts;
+  gint64 last_pts;
 
   /* stream type */
   gboolean is_video_stream;

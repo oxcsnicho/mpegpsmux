@@ -52,7 +52,7 @@ static void gst_mpegpsmux_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static void mpegpsmux_dispose (GObject * object);
-static gboolean new_packet_cb (guint8 * data, guint len, void *user_data, gint64 new_pcr);      /* XXX: @new_pcr not required anymore */
+static gboolean new_packet_cb (guint8 * data, guint len, void *user_data);
 static void release_buffer_cb (guint8 * data, void *user_data);
 
 static gboolean mpegpsdemux_prepare_srcpad (MpegPsMux * mux);
@@ -280,10 +280,10 @@ mpegpsmux_create_stream (MpegPsMux * mux, MpegPsPadData * ps_data, GstPad * pad)
   }
 
   if (ps_data->stream != NULL) {
-    ps_data->pid = ps_data->stream->stream_id;
-    ps_data->ext_pid = ps_data->stream->stream_id_ext;
+    ps_data->stream_id = ps_data->stream->stream_id;
+    ps_data->stream_id_ext = ps_data->stream->stream_id_ext;
     GST_DEBUG_OBJECT (pad, "Stream created, stream_id=%04x, stream_id_ext=%04x",
-        ps_data->pid, ps_data->ext_pid);
+        ps_data->stream_id , ps_data->stream_id_ext);
 
     gst_structure_get_int (s, "rate", &ps_data->stream->audio_sampling);
     gst_structure_get_int (s, "channels", &ps_data->stream->audio_channels);
@@ -376,7 +376,7 @@ mpegpsmux_choose_best_stream (MpegPsMux * mux)
               ") for PID 0x%04x",
               GST_TIME_ARGS (ps_data->cur_ts),
               GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buf)),
-              GST_BUFFER_TIMESTAMP (buf), ps_data->pid);
+              GST_BUFFER_TIMESTAMP (buf), ps_data->stream_id);
 
           /* Choose a stream we've never seen a timestamp for to ensure
            * we push enough buffers from it to reach a timestamp */
@@ -453,7 +453,7 @@ mpegpsmux_collected (GstCollectPads * pads, MpegPsMux * mux)
 
     GST_DEBUG_OBJECT (mux,
         "Chose stream from pad %" GST_PTR_FORMAT " for output (PID: 0x%04x)",
-        c_data->pad, best->pid);
+        c_data->pad, best->stream_id);
 
     /* set timestamp */
     if (GST_CLOCK_TIME_IS_VALID (best->cur_ts)) {
@@ -558,8 +558,8 @@ mpegpsmux_release_pad (GstElement * element, GstPad * pad)
 }
 
 static gboolean
-new_packet_cb (guint8 * data, guint len, void *user_data, gint64 new_pcr)
-{                               /* XXX: @new_pcr not useful anymore */
+new_packet_cb (guint8 * data, guint len, void *user_data)
+{
   /* Called when the PsMux has prepared a packet for output. Return FALSE
    * on error */
 

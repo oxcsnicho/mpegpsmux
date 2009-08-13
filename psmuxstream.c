@@ -32,17 +32,6 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
   PsMuxStream *stream = g_slice_new0 (PsMuxStream);
   PsMuxStreamIdInfo *info = &(mux->id_info);
 
-  /* TODO: packet info */
-  /* Possibly change more information into the packet info, like is_video_stream
-   * and is_audio_stream. But after all this is not that important.
-
-   Code checking = 
-   * (a) inspect the life cycle of each variable
-   * (b) have a look at every XXX
-   * (c) Just take care of errors. If there are things to be improved just write
-   * XXX.
-   */
-
   stream->stream_type = stream_type;
   stream->is_audio_stream = FALSE;
   stream->is_video_stream = FALSE;
@@ -152,7 +141,6 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
   stream->pts = -1;
   stream->dts = -1;
   stream->last_pts = -1;
-  stream->last_dts = -1;
 
   /* These fields are set by gstreamer */
   stream->audio_sampling = 0;
@@ -221,11 +209,8 @@ psmux_stream_consume (PsMuxStream * stream, guint len)
   if (stream->cur_buffer_consumed == 0)
     return;
 
-  if (stream->cur_buffer->pts != -1) {
+  if (stream->cur_buffer->pts != -1)
     stream->last_pts = stream->cur_buffer->pts;
-    stream->last_dts = stream->cur_buffer->dts;
-  } else if (stream->cur_buffer->dts != -1)
-    stream->last_dts = stream->cur_buffer->dts;
 
   if (stream->cur_buffer_consumed == stream->cur_buffer->size) {
     /* Current packet is completed, move along */
@@ -380,7 +365,7 @@ psmux_stream_find_pts_dts_within (PsMuxStream * stream, guint bound,
   /* 1. When there are at least one buffer then output the first buffer with
    * pts/dts
    * 2. If the bound is too small to include even one buffer, output the pts/dts
-   * of that buffer. XXX: how is the timestamp of PES packets determinded?
+   * of that buffer.
    */
   GList *cur;
 
@@ -730,5 +715,5 @@ psmux_stream_get_pts (PsMuxStream * stream)
 {
   g_return_val_if_fail (stream != NULL, -1);
 
-  return stream->last_pts;      // XXX: why returning last_pts?
+  return stream->last_pts;
 }

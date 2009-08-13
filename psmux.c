@@ -34,12 +34,12 @@ psmux_new ()
 
   mux = g_slice_new0 (PsMux);
 
-  mux->dts = -1;                /* uninitialized values */
-  mux->pack_hdr_dts = -1;
-  mux->sys_hdr_dts = -1;
-  mux->psm_dts = -1;
+  mux->pts = -1;                /* uninitialized values */
+  mux->pack_hdr_pts = -1;
+  mux->sys_hdr_pts = -1;
+  mux->psm_pts = -1;
 
-  mux->bit_dts = 0;
+  mux->bit_pts = 0;
 
   mux->pes_max_payload = PSMUX_PES_MAX_PAYLOAD;
   mux->bit_rate = 400 * 1024;   /* XXX: better default values? */
@@ -76,7 +76,7 @@ gboolean
 psmux_write_end_code (PsMux * mux)
 {
   guint8 end_code[4] = { 0, 0, 1, PSMUX_PROGRAM_END };
-  return mux->write_func (end_code, 4, mux->write_func_data, -1);
+  return mux->write_func (end_code, 4, mux->write_func_data);
 }
 
 
@@ -90,7 +90,6 @@ psmux_write_end_code (PsMux * mux)
 void
 psmux_free (PsMux * mux)
 {
-  /* XXX: is it still possible to output a packet when freeing the mux?  */
   GList *cur;
 
   g_return_if_fail (mux != NULL);
@@ -165,9 +164,8 @@ psmux_packet_out (PsMux * mux)
   if (G_UNLIKELY (mux->write_func == NULL))
     return TRUE;
 
-  // XXX: how does new_pcr work? change to pts?
   res = mux->write_func (mux->packet_buf, mux->packet_bytes_written,
-      mux->write_func_data, -1 /* mux->new_pcr */ );
+      mux->write_func_data);
 
   if (res) {
     mux->bit_size += mux->packet_bytes_written;
@@ -190,7 +188,6 @@ psmux_write_stream_packet (PsMux * mux, PsMuxStream * stream)
 {
   gboolean res;
 
-//  mux->new_pcr = -1;
   g_return_val_if_fail (mux != NULL, FALSE);
   g_return_val_if_fail (stream != NULL, FALSE);
 
@@ -198,10 +195,10 @@ psmux_write_stream_packet (PsMux * mux, PsMuxStream * stream)
   {
     guint64 ts = psmux_stream_get_pts (stream);
     if (ts != -1)
-      mux->dts = ts;
+      mux->pts = ts;
   }
 
-  if (mux->dts - mux->pack_hdr_dts > PSMUX_PACK_HDR_INTERVAL
+  if (mux->pts - mux->pack_hdr_pts > PSMUX_PACK_HDR_INTERVAL
       || mux->pes_cnt % mux->pack_hdr_freq == 0) {
     /* Time to write pack header */
     /* FIXME: currently we write the mux rate of the PREVIOUS pack into the
@@ -210,31 +207,31 @@ psmux_write_stream_packet (PsMux * mux, PsMuxStream * stream)
      * pack, we need to put the whole pack into buffer, calculate the
      * mux_rate, and then output the whole trunck.
      */
-    if (mux->dts != -1 && mux->dts > mux->bit_dts
-        && mux->dts - mux->bit_dts > PSMUX_BITRATE_CALC_INTERVAL) {
+    if (mux->pts != -1 && mux->pts > mux->bit_pts
+        && mux->pts - mux->bit_pts > PSMUX_BITRATE_CALC_INTERVAL) {
       /* XXX: smoothing the rate? */
       mux->bit_rate =
           gst_util_uint64_scale (mux->bit_size, 8 * CLOCKBASE,
-          (mux->dts - mux->bit_dts));
+          (mux->pts - mux->bit_pts));
 
       mux->bit_size = 0;
-      mux->bit_dts = mux->dts;
+      mux->bit_pts = mux->pts;
     }
 
     psmux_write_pack_header (mux);
-    mux->pack_hdr_dts = mux->dts;
+    mux->pack_hdr_pts = mux->pts;
   }
 
   if (mux->pes_cnt % mux->sys_hdr_freq == 0) {
     /* Time to write system header */
     psmux_write_system_header (mux);
-    mux->sys_hdr_dts = mux->dts;
+    mux->sys_hdr_pts = mux->pts;
   }
 
   if (mux->pes_cnt % mux->psm_freq == 0) {
     /* Time to write program stream map (PSM) */
     psmux_write_program_stream_map (mux);
-    mux->psm_dts = mux->dts;
+    mux->psm_pts = mux->pts;
   }
 
   /* Write the packet */
@@ -253,97 +250,14 @@ psmux_write_stream_packet (PsMux * mux, PsMuxStream * stream)
   mux->pes_cnt += 1;
 
   return res;
-
-  /* ============= */
-#if 0
-  if (psmux_stream_is_pcr (stream)) {
-    gint64 cur_pcr = 0;
-    gint64 cur_pts = psmux_stream_get_pts (stream);
-    gboolean write_pat;
-    GList *cur;
-
-    if (cur_pts != -1) {
-      PS_DEBUG ("TS for PCR stream is %" G_GINT64_FORMAT, cur_pts);
-    }
-
-    /* FIXME: The current PCR needs more careful calculation than just
-     * writing a fixed offset */
-    if (cur_pts != -1 && (cur_pts >= PSMUX_PCR_OFFSET))
-      cur_pcr = (cur_pts - PSMUX_PCR_OFFSET) *
-          (PSMUX_SYS_CLOCK_FREQ / PSMUX_CLOCK_FREQ);
-
-    /* Need to decide whether to write a new PCR in this packet */
-    if (stream->last_pcr == -1 ||
-        (cur_pcr - stream->last_pcr >
-            (PSMUX_CLOCK_FREQ / PSMUX_DEFAULT_PCR_FREQ))) {
-
-      stream->pi.flags |=
-          PSMUX_PACKET_FLAG_ADAPTATION | PSMUX_PACKET_FLAG_WRITE_PCR;
-      stream->pi.pcr = cur_pcr;
-      stream->last_pcr = cur_pcr;
-      mux->new_pcr = cur_pcr;
-    }
-
-    /* check if we need to rewrite pat */
-    if (mux->last_pat_ts == -1 || mux->pat_changed)
-      write_pat = TRUE;
-    else if (cur_pcr >= mux->last_pat_ts + mux->pat_frequency)
-      write_pat = TRUE;
-    else
-      write_pat = FALSE;
-
-    if (write_pat) {
-      mux->last_pat_ts = cur_pcr;
-      if (!psmux_write_pat (mux))
-        return FALSE;
-    }
-
-    /* check if we need to rewrite any of the current pmts */
-    for (cur = g_list_first (mux->programs); cur != NULL;
-        cur = g_list_next (cur)) {
-      PsMuxProgram *program = (PsMuxProgram *) cur->data;
-      gboolean write_pmt;
-
-      if (program->last_pmt_ts == -1 || program->pmt_changed)
-        write_pmt = TRUE;
-      else if (cur_pcr >= program->last_pmt_ts + program->pmt_frequency)
-        write_pmt = TRUE;
-      else
-        write_pmt = FALSE;
-
-      if (write_pmt) {
-        program->last_pmt_ts = cur_pcr;
-        if (!psmux_write_pmt (mux, program))
-          return FALSE;
-      }
-    }
-  }
-
-  pi->stream_avail = psmux_stream_bytes_avail (stream);
-  pi->packet_start_unit_indicator = psmux_stream_at_pes_start (stream);
-
-  if (!psmux_write_ts_header (mux->packet_buf, pi, &payload_len, &payload_offs))
-    return FALSE;
-
-  if (!psmux_stream_get_data (stream, mux->packet_buf + payload_offs,
-          payload_len))
-    return FALSE;
-
-  res = psmux_packet_out (mux);
-
-  /* Reset all dynamic flags */
-  stream->pi.flags &= PSMUX_PACKET_FLAG_PES_FULL_HEADER;
-
-  return res;
-#endif
 }
 
 static gboolean
 psmux_write_pack_header (PsMux * mux)
 {
   bits_buffer_t bw;
-  guint64 scr = mux->dts;       /* XXX: dts_delay? check the calc */
-  if (mux->dts == -1)
+  guint64 scr = mux->pts;       /* XXX: is this correct? necessary to put any offset? */
+  if (mux->pts == -1)
     scr = 0;
 
   /* pack_start_code */
