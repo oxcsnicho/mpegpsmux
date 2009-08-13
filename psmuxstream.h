@@ -142,6 +142,9 @@ guint64 	psmux_stream_get_pts 		(PsMuxStream *stream);
 #define PSMUX_STREAM_ID_LPCM_INIT       0xa0
 #define PSMUX_STREAM_ID_LPCM_MAX        0xaf
 
+#define PSMUX_STREAM_ID_DIRAC_INIT      0x60
+#define PSMUX_STREAM_ID_DIRAC_MAX       0x6f
+
 struct PsMuxStreamIdInfo {
     guint8 id_mpga;
     guint8 id_mpgv;
@@ -149,18 +152,20 @@ struct PsMuxStreamIdInfo {
     guint8 id_spu;
     guint8 id_dts;
     guint8 id_lpcm;
+    guint8 id_dirac;
 };
 
 static inline void
 psmux_stream_id_info_init (PsMuxStreamIdInfo * info)
 {
-    g_return_if_fail (info != NULL); /* TODO: error*/
+    g_return_if_fail (info != NULL);
     info->id_mpga = PSMUX_STREAM_ID_MPGA_INIT;
     info->id_mpgv = PSMUX_STREAM_ID_MPGV_INIT;
     info->id_ac3  = PSMUX_STREAM_ID_AC3_INIT;
     info->id_spu  = PSMUX_STREAM_ID_SPU_INIT;
     info->id_dts  = PSMUX_STREAM_ID_DTS_INIT;
     info->id_lpcm = PSMUX_STREAM_ID_LPCM_INIT;
+    info->id_dirac= PSMUX_STREAM_ID_DIRAC_INIT;
 }
 
 G_END_DECLS

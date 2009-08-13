@@ -93,7 +93,7 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
     case PSMUX_ST_PS_AUDIO_DTS:
       if (info->id_dts > PSMUX_STREAM_ID_DTS_MAX)
         break;
-      stream->stream_id = PSMUX_EXTENDED_STREAM;
+      stream->stream_id = PSMUX_PRIVATE_STREAM_1;
       stream->stream_id_ext = info->id_dts++;
       stream->is_audio_stream = TRUE;
       break;
@@ -101,12 +101,17 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
     case PSMUX_ST_PS_AUDIO_LPCM:
       if (info->id_lpcm > PSMUX_STREAM_ID_LPCM_MAX)
         break;
-      stream->stream_id = PSMUX_EXTENDED_STREAM;
+      stream->stream_id = PSMUX_PRIVATE_STREAM_1;
       stream->stream_id_ext = info->id_lpcm++;
       stream->is_audio_stream = TRUE;
       break;
-
-      /* TODO: dirac */
+    case PSMUX_ST_VIDEO_DIRAC:
+      if (info->id_dirac > PSMUX_STREAM_ID_DIRAC_MAX)
+        break;
+      stream->stream_id = PSMUX_EXTENDED_STREAM;
+      stream->stream_id_ext = info->id_dirac++;
+      stream->is_video_stream = TRUE;
+      break;
     default:
       g_critical ("Stream type 0x%0x not yet implemented", stream_type);
       break;
@@ -118,6 +123,7 @@ psmux_stream_new (PsMux * mux, PsMuxStreamType stream_type)
     return NULL;
   }
 
+  /* XXX: Are private streams also using stream_id_ext? */
   if (stream->stream_id == PSMUX_EXTENDED_STREAM)
     stream->pi.flags |= PSMUX_PACKET_FLAG_PES_EXT_STREAMID;
 
@@ -426,12 +432,13 @@ psmux_stream_write_pes_header (PsMuxStream * stream, guint8 * data)
     guint8 flags = 0;
 
     /* Not scrambled, original, not-copyrighted, data_alignment specified by flag */
+    flags = 0x81;
     if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_DATA_ALIGN)
-	*data++ = 0x85;
-    else
-	*data++ = 0x81;
+      flags |= 0x04;            /* Enable data_alignment_indicator */
+    *data++ = flags;
 
     /* Flags */
+    flags = 0;
     if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_WRITE_PTS_DTS)
       flags |= 0xC0;
     else if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_WRITE_PTS)
@@ -451,16 +458,16 @@ psmux_stream_write_pes_header (PsMuxStream * stream, guint8 * data)
     } else if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_WRITE_PTS) {
       psmux_put_ts (&data, 0x2, stream->pts);
     }
+
     if (stream->pi.flags & PSMUX_PACKET_FLAG_PES_EXT_STREAMID) {
       guint8 ext_len;
 
-      flags = 0x0f;             /* (reserved bits) | PES_extension_flag_2 */
+      flags = 0x0f;             /* preceeding flags all 0 | (reserved bits) | PES_extension_flag_2 */
       *data++ = flags;
 
       ext_len = 1;              /* Only writing 1 byte into the extended fields */
-      *data++ = 0x80 | ext_len;
-      /* Write the extended streamID */
-      *data++ = stream->stream_id_ext;
+      *data++ = 0x80 | ext_len; /* marker | PES_extension_field_length */
+      *data++ = 0x80 | stream->stream_id_ext;   /* stream_id_extension_flag | extended_stream_id */
     }
   }
 }

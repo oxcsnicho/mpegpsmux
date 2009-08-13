@@ -481,7 +481,7 @@ psmux_write_program_stream_map (PsMux * mux)
   /* CRC32 */
   {
     guint32 crc = calc_crc32 (mux->packet_buf, psm_size - 4);
-    guint8 * pos = mux->packet_buf + psm_size -4;
+    guint8 *pos = mux->packet_buf + psm_size - 4;
     psmux_put32 (&pos, crc);
   }
 
