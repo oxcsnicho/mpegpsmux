@@ -74,7 +74,7 @@ static GstStaticPadTemplate mpegpsmux_sink_factory =
         "channels = (int) [ 1, 8 ], "
         "dynamic_range = (int) [ 0, 255 ], "
         "emphasis = (boolean) { FALSE, TRUE }, "
-        "mute = (boolean) { FALSE, TRUE }; " "audio/x-ac3;" "audio/x-dts"));
+        "mute = (boolean) { FALSE, TRUE }"));
 
 static GstStaticPadTemplate mpegpsmux_src_factory =
 GST_STATIC_PAD_TEMPLATE ("src",
